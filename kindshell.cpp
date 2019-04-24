@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <sstream>
 #include <exception>
 
 #include <unordered_map>
@@ -9,31 +10,34 @@
 
 using namespace std;
 
-const string welcomeMessage = "KindShell created by Baykaov Vladimir\nGroup M3234\n";
-const string helpMessage = "Commands:\nHelp: Shows help\nSet <var_name>=<var_value>: Creates or Rewrites variable\nRemove <var_name>: Removes variable\nVariables: Shows all variables\nExit: Shuts down program\n";
-const string unexpectedSetMessage = "Unexpected input\nExpected: Set <var_name>=<var_value>\n";
-const string unexpectedRemoveMessage = "Unexpected input\nExpected: Remove <var_name>\n";
-const string exitMessage = "Exit program\n";
+const string welcomeMessage = "KindShell created by Baykaov Vladimir\n"
+                              "Group M3234\n";
+
+const string helpMessage = "Commands:\n"
+                           "Help: Shows help,\n"
+                           "Set <var_name>=<var_value>: Creates or rewrites variable,\n"
+                           "Remove <var_name>: Removes variable,\n"
+                           "Variables: Shows all variables,\n"
+                           "Exit: Terminates program.\n";
+
+const string unexpectedSetMessage = "Unexpected input.\n"
+                                    "Expected: Set <var_name>=<var_value>\n";
+
+const string unexpectedRemoveMessage = "Unexpected input.\n"
+                                       "Expected: Remove <var_name>\n";
+
+const string exitMessage = "Terminate program.";
+
 
 unordered_map<string, string> environmentVariables;
 
 
-vector<string> getTokens(string &line) {
+vector<string> getTokens(stringstream &commandStream) {
     vector<string> result;
     string tmpToken;
 
-    for (auto ch : line) {
-        if (isspace(ch)) {
-            if (!tmpToken.empty()) {
-                result.push_back(tmpToken);
-                tmpToken = "";
-            }
-        } else {
-            tmpToken += ch;
-        }
-    }
-
-    if (!tmpToken.empty()) {
+    while (!commandStream.eof()) {
+        getline(commandStream, tmpToken, ' ');
         result.push_back(tmpToken);
     }
 
@@ -42,11 +46,11 @@ vector<string> getTokens(string &line) {
 
 
 void printErrorMessage(const string &message) {
-    cout << message << endl;
+    cerr << message << endl;
 }
 
 
-void executeCommand(vector<string> &tokens) {
+void executeCommand(const vector<string> &tokens) {
     pid_t pid = fork();
 
     if (pid == -1) {
@@ -71,7 +75,7 @@ void executeCommand(vector<string> &tokens) {
 
             int executeResult = execve(args[0], args, variables);
             if (executeResult == -1) {
-                printErrorMessage("Error occurred while executing process given");
+                printErrorMessage("Error occurred while executing process.");
                 exit(EXIT_FAILURE);
             }
 
@@ -80,7 +84,7 @@ void executeCommand(vector<string> &tokens) {
             pid_t childResult = waitpid(pid, &result, 0);
 
             if (childResult == -1) {
-                printErrorMessage("Error occurred while executing child process");
+                printErrorMessage("Error occurred while executing child process.");
             } else {
                 cout << "Process result: " << WEXITSTATUS(result) << endl;
             }
@@ -91,14 +95,18 @@ void executeCommand(vector<string> &tokens) {
 
 int main(int argc, char *argv[]) {
     cout << welcomeMessage << helpMessage;
+
     string command;
+    stringstream commandStream;
 
     cout << ">> ";
 
     while (getline(cin, command)) {
         cout.flush();
+        commandStream.clear();
+        commandStream << command;
 
-        vector<string> lineTokens = getTokens(command);
+        vector<string> lineTokens = getTokens(commandStream);
 
         if (lineTokens.empty()) {
             continue;
@@ -119,7 +127,8 @@ int main(int argc, char *argv[]) {
                     cout << unexpectedSetMessage;
                 } else {
                     string varName = varDefinition.substr(0, equalSignPlace);
-                    string varValue = varDefinition.substr(equalSignPlace + 1, varDefinition.size() - equalSignPlace - 1);
+                    string varValue = varDefinition.substr(equalSignPlace + 1,
+                                                           varDefinition.size() - equalSignPlace - 1);
 
                     environmentVariables[varName] = varValue;
                 }
@@ -139,10 +148,10 @@ int main(int argc, char *argv[]) {
 
         } else if (lineTokens[0] == "Variables") {
             if (environmentVariables.empty()) {
-                cout << "There is on env variables" << endl;
+                cout << "There are no environment variables" << endl;
             } else {
                 for (auto &variable : environmentVariables) {
-                    cout << variable.first << ": " << variable.second << endl;
+                    cout << variable.first << " = " << variable.second << endl;
                 }
             }
 
